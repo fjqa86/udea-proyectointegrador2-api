@@ -10,11 +10,14 @@ class Post extends CI_Model {
     }
 
     function get_lista_productos() {
-        $this->db->select('title, content, date');
-        $this->db->where('post_type', "product");
-        $this->db->from('wp_posts as p');
-        $this->db->join('wp_postmeta pm', 'p.ID = pm.post_id');
-        return $this->db->get()->result();
+        $this->db->where('post_type =', "product");
+        $this->db->where('ID >', 200);
+        return $this->db->get('wp_posts')->result();
+    }
+
+    function get_post_meta($id) {
+        $this->db->where('post_id =', $id);
+        return $this->db->get('wp_postmeta')->result();
     }
 
 }

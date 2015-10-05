@@ -9,8 +9,15 @@ class Servicio extends CI_Controller{
     }
     
         
-    function producto_lista() {       
-       $data['json'] = $this->post->get_lista_productos();
+    function producto_lista() {
+        $resultado= array();
+        $posts = $this->post->get_lista_productos();
+        foreach($posts as $post){            
+            $post_postmeta['post'] = $post;
+            $post_postmeta['meta'] = $this->post->get_post_meta($post->ID);
+            $resultado[] = $post_postmeta;
+        }        
+        $data['json'] = $resultado;
        if (!$data['json']) show_404();
         $this->load->view('json', $data);
     }     

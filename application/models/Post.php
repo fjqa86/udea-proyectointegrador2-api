@@ -19,5 +19,20 @@ class Post extends CI_Model {
         $this->db->where('post_id =', $id);
         return $this->db->get('wp_postmeta')->result();
     }
+    
+    function get_term_relationship($id) {
+        $this->db->where('object_id =', $id);
+        return $this->db->get('wp_term_relationships')->result();
+    }
+    
+    function get_term_taxonomy($id) {
+        $this->db->where('term_taxonomy_id =', $id);
+        return $this->db->get('wp_term_taxonomy')->result();
+    }
+    
+    function get_terms($id) {
+        $this->db->where('term_id =', $id);
+        return $this->db->get('wp_terms')->result();
+    }
 
 }

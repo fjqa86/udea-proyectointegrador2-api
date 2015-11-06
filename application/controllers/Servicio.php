@@ -8,7 +8,6 @@ class Servicio extends CI_Controller{
         $this->load->model('post');
     }
     
-        
     function producto_lista() {
         $resultado= array();
         $posts = $this->post->get_lista_productos();
@@ -33,5 +32,11 @@ class Servicio extends CI_Controller{
         $data['json'] = $resultado;
        if (!$data['json']) show_404();
         $this->load->view('json', $data);
+    }
+    
+    function comprar_carrito(){
+        $cart = json_decode(file_get_contents('php://input'), true);
+         if (!$cart['json']) show_404();
+        $this->post->post_carrito($cart);        
     }
 }

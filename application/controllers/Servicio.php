@@ -35,8 +35,10 @@ class Servicio extends CI_Controller{
     }
     
     function comprar_carrito(){
+        
         $cart = json_decode(file_get_contents('php://input'), true);
-         if (!$cart['json']) show_404();
-        $this->post->post_carrito($cart);        
+        $cart = (object) $cart;
+        $result = $this->post->post_carrito($cart); 
+        echo $result;
     }
 }

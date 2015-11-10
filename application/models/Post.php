@@ -45,82 +45,91 @@ class Post extends CI_Model {
     }
     
     function post_carrito($cart){
-       
-       // Se insertar la orden en la tabla wp_post
-       $dateS = date('Format String','Y-m-d H:i:s');
-       $data = array(
-           'post_author' => 1 ,
-           'IDProd' => 'My title' ,
-           'post_date' => $dateS ,
-           'post_date_gmt' => $dateS ,
-           'post_status' => 'wc-processing' ,
-           'comment_status' => 'open' ,
-           'ping_status' => 'closed' ,
-           'post_modified' => $dateS ,
-           'post_modified_gmt' => $dateS ,
-           'menu_order' => 0 ,
-           'post_type' => 'shop_order' 
+                
+        $this->db->trans_begin();
+        
+        // Se insertar la orden en la tabla wp_post
+        $data = array(
+            'post_author' => 1 ,
+            'post_date' => $cart->date ,
+            'post_date_gmt' => $cart->date ,
+            'post_status' => 'wc-processing' ,
+            'comment_status' => 'open' ,
+            'ping_status' => 'closed' ,
+            'post_modified' => $cart->date ,
+            'post_modified_gmt' => $cart->date ,
+            'menu_order' => 0 ,
+            'post_type' => 'shop_order' 
         );
         $this->db->insert('wp_posts', $data);
-        $orderID = $this->db->insert_id;
+        $orderID = mysql_insert_id();
         
-        insert_postmeta($orderID,$cart); //se insertan los detalles de la orden
-
-        //Se insertan los productos asociados a la orden y su cantidad
-        foreach ($cart as $key => $product){
-            $product->id; // etc.            
-            
+        $this->insert_postmeta($orderID,$cart); //se insertan los detalles de la orden
+        
+        $jsonm = $cart->item;
+        foreach($jsonm as $item) {
+            $item = (object) $item;
             $data = array(
-               'order_item_name' => $product->name ,
+               'order_item_name' => $item->name ,
                'order_item_type' => 'line_item' ,
                'order_id' => $orderID
             );
             $this->db->insert('wp_woocommerce_order_items', $data);
-            $orderItemID = $this->db->insert_id;
+            $orderItemID = mysql_insert_id();
             
             $data = array(
                 array(
                     'order_item_id' => $orderItemID ,
                     'meta_key' => '_qty' ,
-                    'meta_value' => $product->quantity
+                    'meta_value' => $item->quantity
                 ),
                 array(
-                    'post_id' => $orderID ,
+                    'order_item_id' => $orderItemID ,
                     'meta_key' => '_product_id' ,
-                    'meta_value' => $product->productID
+                    'meta_value' => $item->productID
                 ),
                 array(
-                    'post_id' => $orderID ,
+                    'order_item_id' => $orderItemID ,
                     'meta_key' => '_variation_id' ,
-                    'meta_value' => $product->varID
+                    'meta_value' => $item->varID
                 ),
                 array(
-                    'post_id' => $orderID ,
+                    'order_item_id' => $orderItemID ,
                     'meta_key' => '_line_total' ,
-                    'meta_value' => $product->lineTotal
+                    'meta_value' => $item->lineTotal
                 ),
                 array( // Si tiene talla
-                    'post_id' => $orderID ,
+                    'order_item_id' => $orderItemID ,
                     'meta_key' => 'tallas' ,
-                    'meta_value' => $product->talla
+                    'meta_value' => $item->talla
                 ),
                 array( // Si tiene color
-                    'post_id' => $orderID ,
+                    'order_item_id' => $orderItemID ,
                     'meta_key' => 'colores' ,
-                    'meta_value' => $product->color
+                    'meta_value' => $item->color
                 )
             );
-            $this->db->insert_batch('wp_woocommerce_order_items', $data);
-            update_Stock($product->productID,$product->quantity);
+            $this->db->insert_batch('wp_woocommerce_order_itemmeta', $data);
+            $this->update_Stock($item->productID,$item->quantity);
+        }
+
+        if ($this->db->trans_status() === FALSE) {
+            $this->db->trans_rollback();
+            return false;
+        } else {
+            $this->db->trans_commit();
+            return true;
         }
     }
-    
+  
     function update_Stock($productID, $quantity){
+        
+        $quantityInt = (int) $quantity;
         $this->db->select('meta_value');
         $this->db->where('post_id =', $productID);
         $this->db->where('meta_key =', '_stock');
-        $actualQty = $this->db->get('wp_postmeta')->result();
-        $newQty = $actualQty - $quantity;
+        $actualQty = (int) $this->db->get('wp_postmeta')->result();
+        $newQty = $actualQty - $quantityInt;
         
         if ($newQty == 0){
             $this->db->where('post_id', $productID);
@@ -146,75 +155,74 @@ class Post extends CI_Model {
             array(
                'post_id' => $orderID ,
                'meta_key' => '_billing_first_name' ,
-               'meta_value' => $cart[0]->firstName
+               'meta_value' => $cart->firstName
             ),
             array(
                'post_id' => $orderID ,
                'meta_key' => '_billing_last_name' ,
-               'meta_value' => $cart[0]->lastName
+               'meta_value' => $cart->lastName
             ),
             array(
                'post_id' => $orderID ,
                'meta_key' => '_billing_company' ,
-               'meta_value' => $cart[0]->company
+               'meta_value' => $cart->company
             ),
             array(
                'post_id' => $orderID ,
                'meta_key' => '_billing_address_1' ,
-               'meta_value' => $cart[0]->address1
+               'meta_value' => $cart->address1
             ),
             array(
                'post_id' => $orderID ,
                'meta_key' => '_billing_address_2' ,
-               'meta_value' => $cart[0]->address2
+               'meta_value' => $cart->address2
             ),
             array(
                'post_id' => $orderID ,
                'meta_key' => '_billing_city' ,
-               'meta_value' => $cart[0]->city
+               'meta_value' => $cart->city
             ),
             array(
                'post_id' => $orderID ,
                'meta_key' => '_billing_state' ,
-               'meta_value' => $cart[0]->state
+               'meta_value' => $cart->state
             ),
             array(
                'post_id' => $orderID ,
                'meta_key' => '_billing_email' ,
-               'meta_value' => $cart[0]->email
+               'meta_value' => $cart->email
             ),
             array(
                'post_id' => $orderID ,
                'meta_key' => '_billing_phone' ,
-               'meta_value' => $cart[0]->phone
+               'meta_value' => $cart->phone
             ),
             array(
                'post_id' => $orderID ,
                'meta_key' => '_payment_method' ,
-               'meta_value' => $cart[0]->paym
+               'meta_value' => $cart->paym
             ),
             array(
                'post_id' => $orderID ,
                'meta_key' => '_cart_discount' ,
-               'meta_value' => $cart[0]->discount
+               'meta_value' => $cart->discount
             ),
             array(
                'post_id' => $orderID ,
                'meta_key' => '_order_shipping_tax' ,
-               'meta_value' => $cart[0]->shippingTax
+               'meta_value' => $cart->shippingTax
             ),
             array(
                'post_id' => $orderID ,
                'meta_key' => '_order_total' ,
-               'meta_value' => $cart[0]->orderTotal
+               'meta_value' => $cart->orderTotal
             ),
             array(
                'post_id' => $orderID ,
                'meta_key' => '_recorded_sales' ,
-               'meta_value' => $cart[0]->recorded
+               'meta_value' => $cart->recorded
             )           
          );
         $this->db->insert_batch('wp_postmeta', $data);
     }
-
 }

@@ -41,4 +41,17 @@ class Servicio extends CI_Controller{
         $result = $this->post->post_carrito($cart); 
         echo $result;
     }
+    
+    function login() {
+        $user = json_decode(file_get_contents('php://input'));
+        $this->load->model('user');
+        $result = $this->user->get_by_id($user->id);
+        $data['json'] = false;
+        if ($result != 0) {
+            if ($result->user_pass == $user->user_pass) {
+                $data['json'] = true;
+            }
+        }
+        $this->load->view('json', $data);
+    }
 }
